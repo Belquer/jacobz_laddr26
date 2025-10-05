@@ -82,8 +82,7 @@ chmod +x build_app.sh
 ```
 Artifacts:
 - `dist/AprilTag2Max` (one-file CLI)
-- `dist/AprilTag2MaxApp.app` (Finder-launchable bundle, original)
-- `dist/AprilTag2Max2App.app` (Second-generation Cocoa GUI bundle)
+- `dist/AprilTag2Max2App.app` (Cocoa GUI bundle)
 
 ### GUI App (Finder Launch)
 Launching the `.app` now opens a small control window (no video preview):
@@ -103,18 +102,18 @@ Behavior:
 
 The CLI workflow (running `apriltag2max.py` manually) is unchanged.
 
-#### v2 Cocoa GUI (AprilTag2Max2App)
-The v2 app introduces a native Cocoa window & menu (Cmd+Q) plus structured logging at `~/.apriltag2max/gui_v2.log` for Finder launches.
+### Cocoa GUI (AprilTag2Max2App)
+The GUI provides a native Cocoa window & menu (Cmd+Q) plus structured logging at `~/.apriltag2max/gui_v2.log` for Finder launches.
 
-Build + DMG for v2:
+Build + DMG:
 ```bash
 chmod +x pack_dmg_v2.sh
 ./pack_dmg_v2.sh
 ```
-Outputs:
+Output:
 - `dist/AprilTag2Max2.dmg`
 
-Inside that DMG:
+Inside the DMG:
 - `AprilTag2Max2App.app`
 - `Applications` symlink
 - `README.md`
@@ -126,7 +125,7 @@ Troubleshooting:
 - Remove quarantine (unsigned build dev use only):
   `xattr -dr com.apple.quarantine dist/AprilTag2Max2App.app`
 
-AprilTag native libs: The PyInstaller spec now auto-collects `pupil_apriltags` dynamic libraries. If you still see an error like:
+AprilTag native libs: The PyInstaller spec auto-collects `pupil_apriltags` dynamic libraries. If you see an error like:
 ```
 RuntimeError: Could not find clib with pattern libapriltag*.dylib
 ```
@@ -143,18 +142,11 @@ You can then double-click the `.app` or run the binary directly:
 If Gatekeeper blocks it the first time, right-click → Open.
 
 ### Create a DMG (Drag-and-Drop Installer)
-After building the app bundle, you can generate a distributable DMG:
+Use the v2 script:
 ```bash
-chmod +x pack_dmg.sh
-./pack_dmg.sh
+chmod +x pack_dmg_v2.sh
+./pack_dmg_v2.sh
 ```
-Outputs:
-- `dist/AprilTag2Max.dmg`
-
-Inside the mounted DMG the user will see:
-- `AprilTag2MaxApp.app`
-- `Applications` symlink (drag the app onto it to install)
-- `README.md`
 
 #### Optional: Sign the App & DMG
 Code sign the .app first (replace TEAMID & identity):

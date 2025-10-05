@@ -10,9 +10,8 @@ Update `CHANGELOG.md` under Unreleased -> new section with date.
 ## 2. Clean & Build
 ```bash
 ./clean_dist.sh --all  # optional full reset
-./build_app.sh         # builds CLI, original app, v2 app
-./pack_dmg.sh          # original DMG (optional if still supported)
-./pack_dmg_v2.sh       # v2 DMG (primary distribution)
+./build_app.sh         # builds CLI + v2 GUI app
+./pack_dmg_v2.sh       # DMG (primary distribution)
 ```
 
 ## 3. (Optional) Code Sign
@@ -21,7 +20,7 @@ codesign --force --deep --timestamp \
   --sign "Developer ID Application: Your Name (TEAMID)" \
   dist/AprilTag2Max2App.app
 ```
-Repeat for original app if still shipping both.
+CLI binary signing is optional unless distributing it standalone.
 
 ## 4. Notarize (Recommended for distribution)
 ```bash
@@ -50,7 +49,7 @@ git push origin main --tags
 1. Draft a new release from tag `vX.Y.Z`.
 2. Title: `AprilTag2Max vX.Y.Z`
 3. Paste corresponding CHANGELOG section.
-4. Upload `dist/AprilTag2Max2.dmg` (and/or original `AprilTag2Max.dmg`).
+4. Upload `dist/AprilTag2Max2.dmg`.
 
 ## 7. Post-Release
 - Create new `## [Unreleased]` section in `CHANGELOG.md` if removed.

@@ -102,9 +102,7 @@ fi
 echo "[INFO] Building one-file CLI (spec)"
 python -m PyInstaller --noconfirm AprilTag2Max.spec
 
-echo "[INFO] Building .app bundle (spec)"
-python -m PyInstaller --noconfirm AprilTag2MaxApp.spec
-echo "[INFO] Building .app bundle v2 (spec)"
+echo "[INFO] Building v2 Cocoa GUI app (spec)"
 python -m PyInstaller --noconfirm AprilTag2Max2App.spec
 
 VERSION_FILE="VERSION"
@@ -114,32 +112,23 @@ else
   VERSION="0.0.0"
 fi
 
-# Validate Info.plist contains expected keys
-PLIST="dist/AprilTag2MaxApp.app/Contents/Info.plist"
-if [ -f "$PLIST" ]; then
-  BID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST" 2>/dev/null || echo "<missing>")
-  CAM=$(/usr/libexec/PlistBuddy -c 'Print :NSCameraUsageDescription' "$PLIST" 2>/dev/null || echo "<missing>")
-  VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" 2>/dev/null || echo "<missing>")
-  echo "[VERIFY] Bundle Identifier: $BID"
-  echo "[VERIFY] Version: $VER (expected $VERSION)"
-  if [ "$CAM" = "<missing>" ]; then
-    echo "[ERROR] NSCameraUsageDescription missing in built app Info.plist" >&2
-    exit 2
-  fi
-  if [ "$VER" != "$VERSION" ]; then
-    echo "[WARN] Version mismatch: plist=$VER expected=$VERSION" >&2
-  fi
-else
-  echo "[WARN] Info.plist not found at $PLIST" >&2
-fi
-
-echo "[INFO] Build complete (version $VERSION). See dist/ and build/"
-
-# Verify v2 app (if built)
 PLIST2="dist/AprilTag2Max2App.app/Contents/Info.plist"
 if [ -f "$PLIST2" ]; then
   BID2=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST2" 2>/dev/null || echo "<missing>")
+  CAM2=$(/usr/libexec/PlistBuddy -c 'Print :NSCameraUsageDescription' "$PLIST2" 2>/dev/null || echo "<missing>")
   VER2=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST2" 2>/dev/null || echo "<missing>")
-  echo "[VERIFY v2] Bundle Identifier: $BID2"
-  echo "[VERIFY v2] Version: $VER2 (expected $VERSION)"
+  echo "[VERIFY] Bundle Identifier: $BID2"
+  echo "[VERIFY] Version: $VER2 (expected $VERSION)"
+  if [ "$CAM2" = "<missing>" ]; then
+    echo "[ERROR] NSCameraUsageDescription missing in v2 Info.plist" >&2
+    exit 2
+  fi
+  if [ "$VER2" != "$VERSION" ]; then
+    echo "[WARN] Version mismatch: v2 plist=$VER2 expected=$VERSION" >&2
+  fi
+else
+  echo "[ERROR] v2 Info.plist not found at $PLIST2" >&2
+  exit 3
 fi
+
+echo "[INFO] Build complete (v2) version $VERSION. See dist/ and build/"

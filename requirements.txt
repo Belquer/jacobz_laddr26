@@ -1,0 +1,6 @@
+opencv-python
+pupil-apriltags
+python-osc
+pyinstaller
+Pillow
+pyobjc-framework-Cocoa
