@@ -1,0 +1,27 @@
+# Build / distribution artifacts
+/dist/
+/build/
+.dmg_staging*/
+*.dmg
+
+# Python envs
+.venv/
+.buildenv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+~/.apriltag2max/
+
+# Legacy moved content (optional keep out of repo)
+legacy/
+
+# IDE/editor
+.vscode/
+.idea/
+.DS_Store
+
+# PyInstaller spec build caches
+/*.spec
+
