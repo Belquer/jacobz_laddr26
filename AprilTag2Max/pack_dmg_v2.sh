@@ -1,6 +1,8 @@
 #!/bin/zsh
 # Package AprilTag2Max2App.app into a DMG (version 2.0.0).
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 APP_DIR="dist/AprilTag2Max2App.app"
 VOL_NAME="AprilTag2Max2"
 DMG_PATH="dist/${VOL_NAME}.dmg"

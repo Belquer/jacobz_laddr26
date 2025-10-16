@@ -11,6 +11,8 @@
 #   - .DS_Store files
 # Optional flag: --all (also removes binary & dmg for a fresh rebuild)
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Ensure globs that don't match expand to nothing instead of literal pattern (zsh nullglob equivalent)
 setopt NULL_GLOB 2>/dev/null || true

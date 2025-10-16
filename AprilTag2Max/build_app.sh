@@ -2,6 +2,10 @@
 # To run: chmod +x build_app.sh && ./build_app.sh
 set -euo pipefail
 
+# Always operate relative to this script's directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
 APP_NAME="AprilTag2Max"
 ENTRY="apriltag2max.py"
 DIST_DIR="dist"

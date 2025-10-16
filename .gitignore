@@ -1,6 +1,9 @@
-# Build / distribution artifacts
+# Build / distribution artifacts (root)
 /dist/
 /build/
+# Build / distribution artifacts (moved project in subfolder)
+AprilTag2Max/dist/
+AprilTag2Max/build/
 .dmg_staging*/
 *.dmg
 
@@ -22,6 +25,7 @@ legacy/
 .idea/
 .DS_Store
 
-# PyInstaller spec build caches
+# PyInstaller spec files
 /*.spec
+AprilTag2Max/*.spec
 
