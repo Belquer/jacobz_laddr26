@@ -4,13 +4,13 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 8,
+			"revision" : 7,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 59.0, 115.0, 1419.0, 833.0 ],
+		"rect" : [ 255.0, 115.0, 1223.0, 833.0 ],
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
@@ -140,7 +140,7 @@
 						"appversion" : 						{
 							"major" : 9,
 							"minor" : 0,
-							"revision" : 8,
+							"revision" : 7,
 							"architecture" : "x64",
 							"modernui" : 1
 						}
@@ -1225,7 +1225,7 @@
 						"appversion" : 						{
 							"major" : 9,
 							"minor" : 0,
-							"revision" : 8,
+							"revision" : 7,
 							"architecture" : "x64",
 							"modernui" : 1
 						}
@@ -1529,7 +1529,7 @@
 						"appversion" : 						{
 							"major" : 9,
 							"minor" : 0,
-							"revision" : 8,
+							"revision" : 7,
 							"architecture" : "x64",
 							"modernui" : 1
 						}
@@ -1780,7 +1780,7 @@
 						"appversion" : 						{
 							"major" : 9,
 							"minor" : 0,
-							"revision" : 8,
+							"revision" : 7,
 							"architecture" : "x64",
 							"modernui" : 1
 						}
@@ -2029,7 +2029,6 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 2888.0, 394.0, 120.0, 55.0 ],
-					"presentation_linecount" : 2,
 					"text" : "available devices and device formats"
 				}
 
@@ -2491,9 +2490,9 @@
 								"filename" : "Teresa BERGANZA sings Habanera from Carmen.mp3",
 								"filekind" : "audiofile",
 								"id" : "u208006738",
-								"loop" : 0,
+								"loop" : 1,
 								"content_state" : 								{
-
+									"loop" : 1
 								}
 
 							}
@@ -2637,7 +2636,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 403.0, 209.0, 285.0, 22.0 ],
-					"text" : "/card 2 335.724915 292.871613 -111.421829"
+					"text" : "/apriltag 2 0.27294 0.386537 63.806614"
 				}
 
 			}
@@ -2800,8 +2799,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 310.0, 217.0, 66.0, 22.0 ],
-					"text" : "route /card"
+					"patching_rect" : [ 310.0, 217.0, 82.0, 22.0 ],
+					"text" : "route /apriltag"
 				}
 
 			}
