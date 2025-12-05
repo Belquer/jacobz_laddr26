@@ -641,7 +641,7 @@
                     "numinlets": 1,
                     "numoutlets": 3,
                     "outlettype": [ "jit_matrix", "bang", "" ],
-                    "patching_rect": [ 763.0, 546.0, 277.0, 49.0 ],
+                    "patching_rect": [ 763.0, 546.0, 278.0, 49.0 ],
                     "text": "jit.world cards @output_matrix 1 @dim 1920 1080 @matrix_mode_async 0 @enable_cornerpin 1 @fsaa 1 @erase_color 0 0 0"
                 }
             },
@@ -905,6 +905,16 @@
                                 }
                             },
                             {
+                                "absolutepath": "/Users/danielbelquer/Downloads/Hailuo_Video_Vertical 9_16 cinematic macro _452354642694758400 (1).mp4",
+                                "filename": "Hailuo_Video_Vertical 9_16 cinematic macro _452354642694758400 (1).mp4",
+                                "filekind": "moviefile",
+                                "id": "u584011196",
+                                "loop": 1,
+                                "content_state": {
+                                    "loop": 1
+                                }
+                            },
+                            {
                                 "absolutepath": "/Users/danielbelquer/CODE/GitHub/jacobz_laddr26/card_videos/13_dew.mp4",
                                 "filename": "13_dew.mp4",
                                 "filekind": "moviefile",
@@ -940,7 +950,7 @@
                     "outlettype": [ "jit_gl_texture", "", "dictionary" ],
                     "output_texture": 1,
                     "parameter_enable": 0,
-                    "patching_rect": [ 180.0, 328.0, 551.0, 181.66666666666669 ],
+                    "patching_rect": [ 180.0, 328.0, 551.0, 218.0 ],
                     "saved_attribute_attributes": {
                         "candicane2": {
                             "expression": ""
