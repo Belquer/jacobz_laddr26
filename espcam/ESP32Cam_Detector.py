@@ -28,6 +28,10 @@ def parse_args():
                         help="Full MJPEG stream URL; overrides --ip and --port.")
     parser.add_argument("--width", type=int, default=640,
                         help="Display width (height is scaled automatically).")
+    parser.add_argument("--osc-port", type=int, default=5001,
+                        help="OSC output port (default: 5001).")
+    parser.add_argument("--osc-ip", default="127.0.0.1",
+                        help="OSC output IP (default: 127.0.0.1).")
     return parser.parse_args()
 
 def main():
@@ -40,7 +44,8 @@ def main():
         sys.exit(f"Could not open video stream at {stream_url}")
 
     detector = AprilTagDetector(families='tag36h11')
-    print("Stream open.")
+    osc_client = udp_client.SimpleUDPClient(args.osc_ip, args.osc_port)
+    print(f"Stream open. Sending OSC to {args.osc_ip}:{args.osc_port}")
 
     try:
         while True:
@@ -61,6 +66,9 @@ def main():
             detections = detector.detect(gray)
 
             for det in detections:
+                # Send OSC message with tag ID
+                osc_client.send_message("/apriltag", det.tag_id)
+                
                 # Draw bounding box
                 corners = det.corners.astype(int)
                 cv2.polylines(frame_display, [corners], True, (0, 255, 0), 2)
