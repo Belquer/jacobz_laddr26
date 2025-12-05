@@ -2,6 +2,8 @@
 
 Real-time AprilTag detection system using ESP32-CAM hardware and Python computer vision.
 
+**Portable setup** - Works on any machine without configuration changes. ESP32-CAM runs as Access Point, Python sends OSC to localhost.
+
 ## Hardware Setup
 
 - **ESP32-CAM module** configured as WiFi Access Point

@@ -34,10 +34,10 @@
 #include "camera_pins.h"
 
 // ===========================
-// Enter your WiFi credentials
+// Access Point Configuration
 // ===========================
-const char *ssid = "BELQUER_FRIEND";
-const char *password = "welcometothejungle";
+const char *ap_ssid = "ESP32-CAM-AP";
+const char *ap_password = "12345678";
 
 void startCameraServer();
 void setupLedFlash(int pin);
@@ -133,16 +133,19 @@ void setup() {
   setupLedFlash(LED_GPIO_NUM);
 #endif
 
-WiFi.mode(WIFI_AP);  // optional but nice to be explicit
-  WiFi.softAP("ESP32-CAM", "12345678");
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
   Serial.println("Access Point started");
+  Serial.print("AP SSID: ");
+  Serial.println(ap_ssid);
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
-  // ⭐ THIS WAS MISSING ⭐
-  startCameraServer();   // starts the HTTP server on port 80
+  startCameraServer();
 
-  Serial.println("Camera Ready! Connect to WiFi 'ESP32-CAM' and open: http://192.168.4.1/");
+  Serial.print("Camera Ready! Connect to WiFi '");
+  Serial.print(ap_ssid);
+  Serial.println("' and open: http://192.168.4.1/");
 }
 
 void loop() {
