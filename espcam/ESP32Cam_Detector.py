@@ -3,6 +3,7 @@
 ESP32‑CAM AprilTag Detector
 
 Connects to an ESP32‑CAM MJPEG stream and runs AprilTag detection on each frame.
+Sends detection data via OSC to localhost.
 """
 
 import argparse
@@ -17,6 +18,11 @@ try:
     from pupil_apriltags import Detector as AprilTagDetector
 except ImportError:
     sys.exit("Error: The 'pupil-apriltags' package is not installed. Run 'pip install pupil-apriltags'.")
+
+try:
+    from pythonosc import udp_client
+except ImportError:
+    sys.exit("Error: The 'python-osc' package is not installed. Run 'pip install python-osc'.")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Detect AprilTags from an ESP32‑CAM stream.")
