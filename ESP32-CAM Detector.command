@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "/Users/danielbelquer/Documents/GitHub/espcam"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 clear
 echo "🚀 ESP32-CAM AprilTag Detector"
 echo "====================================="
@@ -9,8 +9,8 @@ echo "⏹️  Press 'q' to quit"
 echo "====================================="
 echo ""
 echo "Starting..."
-source esp32-cam-env/bin/activate
-python ESP32Cam_Detector.py
+source "$SCRIPT_DIR/.venv/bin/activate"
+python "$SCRIPT_DIR/espcam/ESP32Cam_Detector.py"
 echo ""
 echo "❌ Detection stopped"
 echo "Press Enter to close this window..."
