@@ -82,12 +82,16 @@ class MaskController:
                 self.client = BleakClient(dev)
 
             await self.client.__aenter__()
-            print("✅ Connected:", self.client.is_connected)
+            print(f"✅ Connected to {dev.name if dev else self.address}: {self.client.is_connected}")
+
+            # Small delay to let connection stabilize
+            await asyncio.sleep(0.5)
+
             try:
                 # Notifications optional; helpful for acks/logging if needed
                 await self.client.start_notify(UUID_NTFY, lambda *_: None)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"⚠️ Notification setup warning: {e}")
 
             # Restore brightness after reconnect
             if self.last_brightness is not None:
@@ -101,7 +105,18 @@ class MaskController:
         await self.ensure()
         if log:
             print(log)
-        await self.client.write_gatt_char(UUID_CMD, enc_cmd(cmd, *args), response=True)
+        try:
+            await self.client.write_gatt_char(UUID_CMD, enc_cmd(cmd, *args), response=True)
+        except Exception as e:
+            print(f"⚠️ Send error: {e}")
+            # Mark client as disconnected to force reconnect
+            if self.client:
+                try:
+                    await self.client.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                self.client = None
+            raise
 
     # ---- Controls ----
     async def set_brightness(self, value: int, announce: bool = True):
@@ -167,7 +182,10 @@ async def osc_server(ctrl: MaskController, host: str, port: int, initial: Option
     print(f"🎛️  OSC ready on udp://{host}:{port}  (/brightness,/image,/anim,/diy)")
 
     if initial is not None:
-        await ctrl.set_brightness(initial)
+        try:
+            await ctrl.set_brightness(initial)
+        except Exception as e:
+            print(f"⚠️ Could not set initial brightness: {e}")
 
     try:
         while True:
@@ -202,7 +220,8 @@ async def autoreconnect(ctrl: MaskController):
     while True:
         try:
             await ctrl.ensure()
-        except Exception:
+        except Exception as e:
+            print(f"🔄 Reconnecting... ({e})")
             await asyncio.sleep(2.0)
         await asyncio.sleep(1.0)
 
