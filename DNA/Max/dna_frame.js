@@ -18,8 +18,8 @@ autowatch = 1;
 inlets = 1;
 outlets = 1;
 
-var NUM_LEDS    = 225;
-var PAYLOAD_LEN = NUM_LEDS * 3;   // 675
+var NUM_LEDS    = 90;
+var PAYLOAD_LEN = NUM_LEDS * 3;   // 270
 var HEADER      = 0x46;           // 'F'
 
 var lastFrame = null;

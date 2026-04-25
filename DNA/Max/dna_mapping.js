@@ -25,13 +25,14 @@ autowatch = 1;
 inlets  = 1;
 outlets = 1;
 
-var NUM_LEDS = 225;
+var NUM_LEDS = 90;
 
 var sourceW    = 1920;
 var sourceH    = 1080;
 var helixTurns = 3;
 var wrapMode   = 0;
 var vflip      = 0;
+var numStrands = 1;   // 1 = single continuous wrap, 2 = double helix
 
 var lookup = new JitterMatrix(2, "long", NUM_LEDS, 1);
 lookup.name = "dna_lookup";
@@ -41,6 +42,7 @@ function turns(n)   { helixTurns = n; rebuild(); }
 function wrap(m)    { wrapMode = m ? 1 : 0; rebuild(); }
 function vflip_(f)  { vflip = f ? 1 : 0; rebuild(); }
 this.vflip = vflip_;
+function strands(n) { numStrands = (n === 2) ? 2 : 1; rebuild(); }
 function bang()     { rebuild(); }
 
 // Auto-update source dims whenever a video matrix passes through.
@@ -61,8 +63,13 @@ function rebuild() {
     var i, strand, idx, perStrand, t, angle, u, v, x, y;
 
     for (i = 0; i < NUM_LEDS; i++) {
-        if (i < halfN) { strand = 0; idx = i;          perStrand = halfN; }
-        else           { strand = 1; idx = i - halfN;  perStrand = NUM_LEDS - halfN; }
+        if (numStrands === 1) {
+            strand = 0; idx = i; perStrand = NUM_LEDS;
+        } else if (i < halfN) {
+            strand = 0; idx = i;         perStrand = halfN;
+        } else {
+            strand = 1; idx = i - halfN; perStrand = NUM_LEDS - halfN;
+        }
 
         t     = idx / Math.max(1, perStrand - 1);             // 0..1 along strand
         angle = t * helixTurns * twoPi + strand * Math.PI;    // radians

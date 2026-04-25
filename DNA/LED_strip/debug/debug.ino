@@ -1,25 +1,17 @@
+// debug.ino — same parser as LED_strip but reports counters once per
+// second instead of acking with 'R'. Tells us exactly where frames die.
+
 #include <Adafruit_NeoPixel.h>
 
-// --- Single-strand config ---------------------------------------------
-// Strand A: all pixels 0..NUM_LEDS_A-1 driven from LED_PIN_A.
-// To re-add a parallel second strand later, restore stripB and the
-// second loop in the WAIT_CHK handler — but only with NUM_LEDS_B > 0.
-// Allocating a 0-length NeoPixel object can interfere with serial
-// timing on the Uno (we observed this empirically: with stripB.show()
-// in the chain, ack rate dropped from 28/sec to 1.4/sec).
-
 #define LED_PIN_A    9
+#define LED_PIN_B    10
 #define NUM_LEDS_A   90
-#define NUM_LEDS     NUM_LEDS_A
+#define NUM_LEDS_B   0
+#define NUM_LEDS     (NUM_LEDS_A + NUM_LEDS_B)
 #define BAUD         115200
 
-// Protocol:
-//  'F'(0x46), LEN_HI, LEN_LO (= NUM_LEDS*3),
-//  [LEN bytes RGB], CHK = sum(payload) & 0xFF
-// Handshake:
-//  After a valid frame is applied and shown, Arduino sends 'R'(0x52).
-
 Adafruit_NeoPixel stripA(NUM_LEDS_A, LED_PIN_A, NEO_BGR + NEO_KHZ800);
+Adafruit_NeoPixel stripB(NUM_LEDS_B, LED_PIN_B, NEO_BGR + NEO_KHZ800);
 
 enum ParseState : uint8_t { WAIT_HDR, WAIT_LEN_HI, WAIT_LEN_LO, WAIT_PAYLOAD, WAIT_CHK };
 ParseState state = WAIT_HDR;
@@ -32,79 +24,78 @@ uint32_t sum = 0;
 uint32_t lastByteMs = 0;
 const uint16_t FRAME_IDLE_TIMEOUT_MS = 100;
 
-void reset_parser() {
-  state = WAIT_HDR;
-  len = 0;
-  idx = 0;
-  sum = 0;
-}
+uint32_t cBytes = 0, cGood = 0, cBadLen = 0, cBadChk = 0, cTimeout = 0;
+uint32_t lastReport = 0;
+
+void reset_parser() { state = WAIT_HDR; len = 0; idx = 0; sum = 0; }
 
 void setup() {
   stripA.begin();
-  // Full brightness — control output level on the Max side so you
-  // don't need to reflash to adjust. WARNING: at high LED counts and
-  // bright frames, current draw can exceed your PSU's capacity.
+  stripB.begin();
   stripA.setBrightness(255);
+  stripB.setBrightness(255);
   stripA.show();
-
+  stripB.show();
   Serial.begin(BAUD);
   reset_parser();
-
-  // Settle delay — strips appreciate a moment before first frame.
   delay(500);
-
-  Serial.write('R');
+  Serial.println(F("DEBUG_READY"));
 }
 
 void loop() {
   if (state != WAIT_HDR && (millis() - lastByteMs) > FRAME_IDLE_TIMEOUT_MS) {
+    cTimeout++;
     reset_parser();
   }
 
   while (Serial.available()) {
     uint8_t b = (uint8_t)Serial.read();
+    cBytes++;
     lastByteMs = millis();
 
     switch (state) {
       case WAIT_HDR:
         if (b == 'F') state = WAIT_LEN_HI;
         break;
-
       case WAIT_LEN_HI:
         len = ((uint16_t)b) << 8;
         state = WAIT_LEN_LO;
         break;
-
       case WAIT_LEN_LO:
         len |= b;
-        if (len == EXPECTED_LEN) {
-          idx = 0;
-          sum = 0;
-          state = WAIT_PAYLOAD;
-        } else {
-          reset_parser();
-        }
+        if (len == EXPECTED_LEN) { idx = 0; sum = 0; state = WAIT_PAYLOAD; }
+        else { cBadLen++; reset_parser(); }
         break;
-
       case WAIT_PAYLOAD:
         payload[idx++] = b;
         sum += b;
         if (idx >= EXPECTED_LEN) state = WAIT_CHK;
         break;
-
       case WAIT_CHK: {
-        uint8_t chk = b;
-        if (((uint8_t)sum) == chk) {
+        if (((uint8_t)sum) == b) {
+          cGood++;
           uint16_t j = 0;
           for (uint16_t i = 0; i < NUM_LEDS_A; ++i) {
-            stripA.setPixelColor(i, payload[j], payload[j + 1], payload[j + 2]);
+            stripA.setPixelColor(i, payload[j], payload[j+1], payload[j+2]);
             j += 3;
           }
           stripA.show();
-          Serial.write('R');
+        } else {
+          cBadChk++;
         }
         reset_parser();
       } break;
     }
+  }
+
+  uint32_t now = millis();
+  if (now - lastReport >= 1000) {
+    Serial.print(F("bytes="));   Serial.print(cBytes);
+    Serial.print(F(" good="));   Serial.print(cGood);
+    Serial.print(F(" badLen=")); Serial.print(cBadLen);
+    Serial.print(F(" badChk=")); Serial.print(cBadChk);
+    Serial.print(F(" timeout="));Serial.println(cTimeout);
+    cBytes = cGood = cBadLen = cBadChk = cTimeout = 0;
+    lastReport = now;
   }
 }
