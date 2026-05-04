@@ -1,17 +1,29 @@
+// LED_strip.ino v1.0.0
 #include <Adafruit_NeoPixel.h>
 
-// --- Single-strand config ---------------------------------------------
-// Strand A: all pixels 0..NUM_LEDS_A-1 driven from LED_PIN_A.
-// To re-add a parallel second strand later, restore stripB and the
-// second loop in the WAIT_CHK handler — but only with NUM_LEDS_B > 0.
-// Allocating a 0-length NeoPixel object can interfere with serial
-// timing on the Uno (we observed this empirically: with stripB.show()
-// in the chain, ack rate dropped from 28/sec to 1.4/sec).
+// --- Two-strand parallel config ---------------------------------------
+// Strand A: pixels 0..NUM_LEDS_A-1                 (D9,  base -> top)
+// Strand B: pixels NUM_LEDS_A..NUM_LEDS-1          (D10, base -> top)
+// Both strands' data lines come straight from the Arduino — no top-of-
+// helix bridge. Both physically run base -> top, so payload index
+// progression matches physical height on both strands.
+//
+// Power: each strand fed independently from PSU at its base; common
+// ground tied to Arduino GND.
+//
+// IMPORTANT: never instantiate Adafruit_NeoPixel with count 0. We hit
+// a confirmed bug where a 0-LED strip object corrupts AVR serial
+// timing badly enough to drop ~95% of frames. If a strand is
+// physically disconnected, remove it from this sketch entirely.
+
+#define VERSION "1.0.0"
 
 #define LED_PIN_A    9
-#define NUM_LEDS_A   90
-#define NUM_LEDS     NUM_LEDS_A
-#define BAUD         115200
+#define LED_PIN_B    10
+#define NUM_LEDS_A   108
+#define NUM_LEDS_B   105
+#define NUM_LEDS     (NUM_LEDS_A + NUM_LEDS_B)
+#define BAUD         250000
 
 // Protocol:
 //  'F'(0x46), LEN_HI, LEN_LO (= NUM_LEDS*3),
@@ -20,6 +32,7 @@
 //  After a valid frame is applied and shown, Arduino sends 'R'(0x52).
 
 Adafruit_NeoPixel stripA(NUM_LEDS_A, LED_PIN_A, NEO_BGR + NEO_KHZ800);
+Adafruit_NeoPixel stripB(NUM_LEDS_B, LED_PIN_B, NEO_BGR + NEO_KHZ800);
 
 enum ParseState : uint8_t { WAIT_HDR, WAIT_LEN_HI, WAIT_LEN_LO, WAIT_PAYLOAD, WAIT_CHK };
 ParseState state = WAIT_HDR;
@@ -41,18 +54,18 @@ void reset_parser() {
 
 void setup() {
   stripA.begin();
-  // Full brightness — control output level on the Max side so you
-  // don't need to reflash to adjust. WARNING: at high LED counts and
-  // bright frames, current draw can exceed your PSU's capacity.
+  stripB.begin();
+  // Full brightness — control output level on the Max side.
   stripA.setBrightness(255);
+  stripB.setBrightness(255);
   stripA.show();
+  stripB.show();
 
   Serial.begin(BAUD);
   reset_parser();
 
-  // Settle delay — strips appreciate a moment before first frame.
   delay(500);
-
+  Serial.println(F("LED_strip v" VERSION));
   Serial.write('R');
 }
 
@@ -100,7 +113,12 @@ void loop() {
             stripA.setPixelColor(i, payload[j], payload[j + 1], payload[j + 2]);
             j += 3;
           }
+          for (uint16_t i = 0; i < NUM_LEDS_B; ++i) {
+            stripB.setPixelColor(i, payload[j], payload[j + 1], payload[j + 2]);
+            j += 3;
+          }
           stripA.show();
+          stripB.show();
           Serial.write('R');
         }
         reset_parser();

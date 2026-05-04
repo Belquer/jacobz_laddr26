@@ -1,4 +1,4 @@
-// dna_motion.js — temporal smoothing + motion-pulse amplification for
+// dna_motion.js v1.0.0 — temporal smoothing + motion-pulse amplification for
 // the per-LED matrix. Use with [v8 dna_motion.js] (also works in [js]).
 //
 // Drop between the helical-sample matrix and the framing JS:
@@ -46,7 +46,9 @@ autowatch = 1;
 inlets  = 1;
 outlets = 1;
 
-var NUM_LEDS = 90;
+post("dna_motion.js v1.0.0\n");
+
+var NUM_LEDS = 213;
 
 var smoothing   = 0.7;
 var motionBoost = 2.0;
