@@ -4843,3 +4843,6 @@ Max/DNA_video.mov
 *.ai
 *.pdf
 *.mp4
+
+# Locally-cached video assets (large; regenerate with ffmpeg as needed)
+Jacobz Laddr Cards/Cards Videos ProRes/
