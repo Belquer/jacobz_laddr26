@@ -126,7 +126,12 @@ verify which version is actually loaded.
 - On a valid frame the Arduino sends back `'R'` (`0x52`) once
   `strip.show()` completes. Use as flow control to gate the next frame.
 
-### Max patches (`Max/`)
+### Max patches (`../Max/JacobzLAddr26-dna/`)
+
+The Max project lives at `<repo>/Max/JacobzLAddr26-dna/` with its
+JS sources in `code/`. The Arduino sketch (`DNA/LED_strip/`) and the
+helper scripts (`DNA/dna_config.py`, `Set LED counts.command`) stay
+under `DNA/`.
 
 - **`dna_frame.js`** — serial framing. Reads a 3-plane char `NUM_LEDS×1`
   matrix and emits the framed byte list to `[serial]`. Use with
@@ -138,6 +143,10 @@ verify which version is actually loaded.
   - `scan <N>` — light only LED N red (raw 255,0,0; bypasses gains).
     Use with `[metro 500] → [counter] → [prepend scan]` to walk a dot
     down the rope and count LEDs from inside Max.
+  - `chunk <N>` — split each outgoing serial frame into chunks ≤ N
+    bytes (default 256). Safety net for macOS USB-CDC's small TX
+    buffer; usually unnecessary if `[jit.movie] @unique 1` is set
+    (see gotchas below).
 - **`dna_mapping.js`** — generates the (x, y) sample-lookup matrix for
   the helical layout. Outputs a 2-plane long `NUM_LEDS×1` matrix used
   as the position input to `[jit.repos]`. Auto-detects source video
@@ -236,3 +245,15 @@ to update by hand in your Max patch.
 - **Voltage drop along the strand:** with bright frames, far LEDs
   dim or go dark. Lower the current (via `master <0.3>`) before
   reaching for power injection — it scales linearly and is free.
+- **`[jit.movie] @unique 1` is mandatory in the production patch.**
+  Without it, `jit.movie` re-emits its current frame on every Jitter
+  scheduler tick (~60+ Hz), even though the video itself is at 24/30
+  fps. That floods the OS USB-CDC TX buffer (~384 bytes on macOS),
+  produces `write 384 / write -1` status spam in `[serial]`'s right
+  outlet, and the strip locks into stale state. With `unique 1` the
+  matrix only emits when a *new* video frame is decoded, so the
+  send rate matches the video rate and the buffer stays clear.
+- **`[speedlim]` doesn't pass long lists.** Don't put one between
+  `[v8 dna_frame.js]` and `[serial]` — the framed list (~640 bytes
+  for 213 LEDs) gets dropped silently. Use `unique 1` upstream
+  instead.

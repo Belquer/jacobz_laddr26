@@ -1,4 +1,4 @@
-// dna_frame.js v1.0.0 — for use with [js dna_frame.js] or [v8 dna_frame.js]
+// dna_frame.js v1.1.1 — for use with [js dna_frame.js] or [v8 dna_frame.js]
 //
 // Input forms on inlet 0:
 //
@@ -35,7 +35,7 @@ autowatch = 1;
 inlets = 1;
 outlets = 1;
 
-post("dna_frame.js v1.0.0\n");
+post("dna_frame.js v1.1.1\n");
 
 var NUM_LEDS    = 213;
 var PAYLOAD_LEN = NUM_LEDS * 3;   // 639
@@ -49,6 +49,20 @@ var bGain = 0.65;
 var lastFrame = null;
 var scratch = new JitterMatrix(3, "char", NUM_LEDS, 1);
 
+// macOS USB-CDC TX buffer is small (~384 bytes). When the framed
+// payload exceeds that, Max [serial] truncates or drops the write
+// (visible as "write 384 / write -1" status messages). We chunk the
+// outgoing list into safely-sized pieces; bytes still reach the
+// Arduino in order, the parser doesn't care that they arrived in
+// multiple writes.
+var CHUNK_SIZE = 256;
+var debugNextEmit = false;   // print one emit-path log after each chunk change
+function chunk(n) {
+    CHUNK_SIZE = (n > 0) ? n : 256;
+    debugNextEmit = true;
+    post("dna_frame.js: CHUNK_SIZE = " + CHUNK_SIZE + "\n");
+}
+
 function master(v) { masterGain = (v < 0) ? 0 : v; }
 function r(v) { rGain = (v < 0) ? 0 : v; }
 function g(v) { gGain = (v < 0) ? 0 : v; }
@@ -56,7 +70,25 @@ function b(v) { bGain = (v < 0) ? 0 : v; }
 
 function emit(out) {
     lastFrame = out;
-    outlet(0, out);
+    if (CHUNK_SIZE >= out.length) {
+        if (debugNextEmit) {
+            post("dna_frame.js: emit single-shot, len=" + out.length + "\n");
+            debugNextEmit = false;
+        }
+        outlet(0, out);
+        return;
+    }
+    var nChunks = 0;
+    for (var i = 0; i < out.length; i += CHUNK_SIZE) {
+        var end = (i + CHUNK_SIZE < out.length) ? (i + CHUNK_SIZE) : out.length;
+        outlet(0, out.slice(i, end));
+        nChunks++;
+    }
+    if (debugNextEmit) {
+        post("dna_frame.js: emit chunked, " + nChunks +
+             " chunks of <=" + CHUNK_SIZE + " (total " + out.length + ")\n");
+        debugNextEmit = false;
+    }
 }
 
 function scale8(v, channelGain) {

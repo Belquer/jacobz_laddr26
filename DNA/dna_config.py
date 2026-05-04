@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-dna_config.py v1.0.0 — set LED counts for the DNA installation.
+dna_config.py v1.1.0 — set LED counts for the DNA installation.
 
 Usage:
     python3 dna_config.py <strand_A_count> <strand_B_count>
@@ -100,18 +100,23 @@ def main():
         (r'#define NUM_LEDS_B\s+\d+', f'#define NUM_LEDS_B   {b}'),
     ], version_re=r'#define VERSION "([\d.]+)"')
 
-    update_file(os.path.join(here, 'Max', 'dna_frame.js'), [
+    # Max-side JS files now live alongside the Max project at
+    # <repo>/Max/JacobzLAddr26-dna/code/  (this script is in <repo>/DNA/).
+    code = os.path.normpath(os.path.join(here, '..', 'Max',
+                                         'JacobzLAddr26-dna', 'code'))
+
+    update_file(os.path.join(code, 'dna_frame.js'), [
         (r'var NUM_LEDS\s*=\s*\d+;',
          f'var NUM_LEDS    = {total};'),
         (r'var PAYLOAD_LEN\s*=\s*NUM_LEDS\s*\*\s*3;\s*//.*',
          f'var PAYLOAD_LEN = NUM_LEDS * 3;   // {total * 3}'),
     ], version_re=r'dna_frame\.js v([\d.]+)')
 
-    update_file(os.path.join(here, 'Max', 'dna_motion.js'), [
+    update_file(os.path.join(code, 'dna_motion.js'), [
         (r'var NUM_LEDS\s*=\s*\d+;', f'var NUM_LEDS = {total};'),
     ], version_re=r'dna_motion\.js v([\d.]+)')
 
-    update_file(os.path.join(here, 'Max', 'dna_mapping.js'), [
+    update_file(os.path.join(code, 'dna_mapping.js'), [
         (r'var NUM_LEDS\s*=\s*\d+;',   f'var NUM_LEDS   = {total};'),
         (r'var NUM_LEDS_A\s*=\s*\d+;', f'var NUM_LEDS_A = {a};'),
         (r'var NUM_LEDS_B\s*=\s*\d+;', f'var NUM_LEDS_B = {b};'),
