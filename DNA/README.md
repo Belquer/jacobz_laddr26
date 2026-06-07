@@ -6,6 +6,10 @@ serial at 250000 baud. A Max patch resamples a video source through a
 helical sample-lookup into a per-LED RGB stream and ships it down the
 wire.
 
+The same stream can run **wirelessly** by swapping the Uno for a pair of
+ESP32 boards linked over ESP-NOW — with zero changes to the Max patch.
+See [Wireless operation (ESP-NOW)](#wireless-operation-esp-now).
+
 ## Current configuration
 
 | | |
@@ -188,6 +192,152 @@ under `DNA/`.
 [metro 5] → [serial]                ← REQUIRED to pull received bytes
                                        (R handshake) out of [serial]'s buffer
 ```
+
+## Wireless operation (ESP-NOW)
+
+You can cut the USB tether between the Mac and the rope by swapping the
+Arduino Uno for **two classic ESP32 boards** (WROOM / DevKitC) linked
+over **ESP-NOW**. Nothing in Max changes — the patch, the framing JS,
+the `'F'…CHK` protocol, and the `'R'` handshake flow control are all
+untouched. You simply plug a different board into the Mac.
+
+```
+Max ──USB serial 250000──▶ ESP32 BRIDGE ──ESP-NOW (ch 11)──▶ ESP32 RECEIVER ──▶ 2 LED strands
+   'F',LEN,payload,CHK        validate +        broadcast        reassemble +
+   ◀──────── 'R' ─────────    fragment        (3 chunks)          drive + show
+                              forward 'R' ◀──── ESP-NOW ack ◀───── send 'R' after show()
+```
+
+### Why ESP-NOW
+
+- **Max stays identical.** The bridge is a drop-in for the Uno: same
+  baud (250000), same wire protocol, same per-frame `'R'` handshake.
+- **No router, no IP config, no pairing.** Packets are broadcast; the
+  receiver acks by broadcast too. Power both boards on and they talk.
+- **Low latency, plenty of headroom.** 213 LEDs = 639 payload bytes =
+  3 ESP-NOW chunks/frame; round-trip is well under the ~33 ms budget at
+  30 fps.
+- **Coexists cleanly with the ESP32-CAM** — see
+  [Running alongside the ESP32-CAM](#running-alongside-the-esp32-cam).
+
+### Running alongside the ESP32-CAM
+
+Both subsystems are used together in the same show, so they're designed
+to share **zero** resources. Each potential point of contention and why
+it's clear:
+
+| Shared resource | ESP32-CAM uses… | LED link uses… | Conflict? |
+| --- | --- | --- | --- |
+| **Mac WiFi radio** | Mac joins `ESP32-CAM-AP` (ch1) for the MJPEG stream | nothing — frames go Mac→bridge over **USB**, then ESP-NOW | **No.** The Mac's one radio is 100% dedicated to the camera. |
+| **2.4 GHz channel** | soft-AP pinned to **ch1** | ESP-NOW on **ch11** | **No.** ch1 and ch11 are non-overlapping, so the camera's MJPEG stream and the LED frames never share airtime. (The camera is also tuned low-res/low-bitrate for AprilTags, leaving extra margin.) |
+| **USB ports** | none (camera is wireless, AP-powered) | one port for the bridge dongle | **No.** |
+| **Serial / Max** | none | bridge serial only | **No.** |
+| **OSC / localhost** | Python detector → `127.0.0.1:5001` | none (serial only) | **No.** |
+| **ESP-NOW packets** | doesn't speak ESP-NOW | magic/proto/kind-filtered | **No.** Stray packets are rejected. |
+
+The single contract to keep in sync is the **channel plan**:
+
+> **Camera = channel 1. LED link = channel 11.** Non-overlapping.
+
+It's pinned in code on both sides: `AP_CHANNEL` in
+`espcam/espcam_Ok/espcam_Ok.ino` and `ESPNOW_CHANNEL` in both LED
+sketches. If you ever move the camera off ch1, move the LED link to
+another non-overlapping channel (the trio is 1 / 6 / 11) — never let
+them land on the same or adjacent channels.
+
+Physical tip: the bridge dongle's radio (ch11) sits inches from the
+Mac's radio (ch1). That separation is large, but if you see camera-stream
+or LED glitches when both are busy, put the bridge on a short USB
+extension cable to get its antenna away from the Mac.
+
+### Sketches (`LED_strip_esp32_bridge/`, `LED_strip_esp32_rx/`)
+
+- **`LED_strip_esp32_bridge.ino`** — plugs into the Mac in place of the
+  Uno. Reads the serial frame protocol, validates the checksum,
+  fragments the payload, broadcasts it over ESP-NOW, waits up to
+  `ACK_TIMEOUT_MS` (25 ms) for the receiver's ack, then writes `'R'`
+  back to Max. **Count-agnostic** — it forwards whatever `LEN` Max
+  sends, so it never needs reflashing when the rope length changes.
+  Prints `LED_strip_esp32_bridge vX.Y.Z`, its MAC, and the channel on
+  boot.
+- **`LED_strip_esp32_rx.ino`** — wired to the LEDs. Reassembles frames,
+  drives both strands (`Adafruit_NeoPixel`, `NEO_BGR`), and acks. Holds
+  the LED counts (kept in sync by `dna_config.py`). Prints
+  `LED_strip_esp32_rx vX.Y.Z`, its MAC, the channel, and a once/second
+  `frames/s · chunks/s` stat line.
+- **`dna_espnow.h`** — shared on-air packet layout (copied into both
+  sketch folders). `DNA_PROTO_VERSION` must match on both boards.
+
+### Wiring changes vs. the Uno
+
+Only the **data pins** move; power/ground is unchanged.
+
+| | Uno | ESP32 receiver |
+| --- | --- | --- |
+| Strand A data | `D9`  | `GPIO 16` |
+| Strand B data | `D10` | `GPIO 17` |
+
+The **common ground** rule still applies — tie the ESP32 GND, both
+strands, and the PSU together.
+
+**Powering the ESP32s.** Each board needs its own 5 V (~250–500 mA); the
+LED *current* always goes straight from the PSU to the strands, never
+through the board.
+
+- **Bridge** — powered by the Mac's USB. Nothing extra.
+- **Receiver** — either (a) any USB charger / power bank, or (b) tap the
+  LED PSU's regulated 5 V into the ESP32's **`5V`/`VIN`** pin (not
+  `3V3`), sharing the common ground. A classic DevKitC tolerates this —
+  that pin sits ahead of the onboard 3.3 V regulator.
+- ⚠️ Don't power the receiver from USB **and** the 5V pin at the same
+  time (back-feed risk — pick one).
+
+### Flashing
+
+Double-click **`Flash ESP32 wireless.command`** and pick **1) BRIDGE**
+or **2) RECEIVER**; it auto-detects the port and compiles + uploads with
+`arduino-cli` (FQBN `esp32:esp32:esp32`). Flash each board once. Some
+DevKitC clones need the **BOOT** button held during upload.
+
+Requires the Espressif **esp32** core (`arduino-cli core install
+esp32:esp32`) and the **Adafruit NeoPixel** library (≥ 1.11, which uses
+the RMT peripheral on ESP32 so `show()` doesn't disturb the radio).
+
+### Wireless bring-up
+
+1. Flash both boards. Open each board's Serial Monitor once to confirm
+   the banner, the matching `proto v1`, and `channel 1`.
+2. Power the receiver and its LED PSU (common ground!). It prints
+   `ready — waiting for frames`.
+3. Plug the bridge into the Mac. In Max, point `[serial]` at the
+   bridge's port (baud **250000**, unchanged) — you'll see the bridge
+   banner and the boot `'R'`.
+4. Run the patch exactly as before. The receiver's stat line should
+   show `frames/s` tracking your video rate.
+
+### Wireless gotchas
+
+- **Channel must match on both LED boards** (`ESPNOW_CHANNEL`, default
+  11). Mismatched channels = silent total loss. Keep it **non-overlapping
+  with the camera** (camera = ch1, LED = ch11). Do *not* set it back to
+  the camera's channel — that re-introduces airtime contention.
+- **`DNA_PROTO_VERSION` must match.** If you edit `dna_espnow.h`, copy
+  it into *both* sketch folders and reflash both.
+- **Dropped chunk = dropped frame, not a stall.** If a chunk is lost,
+  the receiver discards the partial frame and the bridge releases Max
+  after the 25 ms ack timeout. The stream keeps flowing; you just lose
+  one frame. Persistent loss → confirm both boards share the same
+  `ESPNOW_CHANNEL`, pick a channel clear of venue WiFi, shorten the
+  antenna distance, or move the bridge dongle off the Mac with a short
+  USB extension (its ch11 radio sitting right on top of the Mac's ch1
+  radio can desense both).
+- **Up to 8 chunks / 640 LEDs per frame.** The 240-byte chunk size caps
+  a single frame at 1920 payload bytes. Beyond that, raise
+  `DNA_MAX_CHUNKS`/`CHUNK_DATA_MAX` in `dna_espnow.h` (chunk header +
+  data must stay ≤ 250) or split the rope across two receivers.
+- **NeoPixel library version matters on ESP32.** Old bit-bang versions
+  disable interrupts during `show()` and can glitch ESP-NOW. Use a
+  recent Adafruit NeoPixel (RMT-based) or switch to FastLED/NeoPixelBus.
 
 ## Bring-up checklist
 

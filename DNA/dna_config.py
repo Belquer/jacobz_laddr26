@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-dna_config.py v1.1.0 — set LED counts for the DNA installation.
+dna_config.py v1.2.0 — set LED counts for the DNA installation.
 
 Usage:
     python3 dna_config.py <strand_A_count> <strand_B_count>
 
 What it does:
-  1. Updates LED_strip.ino, dna_frame.js, dna_mapping.js, dna_motion.js
+  1. Updates LED_strip.ino (wired Uno), LED_strip_esp32_rx (wireless
+     ESP-NOW receiver), dna_frame.js, dna_mapping.js, dna_motion.js
      in place with the new counts.
   2. Bumps each file's PATCH version (semver).
-  3. Compiles and uploads the Arduino sketch (Uno on first
-     /dev/cu.usbmodem* found).
+  3. Compiles and uploads the Arduino Uno sketch (first
+     /dev/cu.usbmodem* found). The ESP32 receiver is NOT auto-flashed —
+     reflash it with "Flash ESP32 wireless.command" (its source is
+     already updated to the new counts). The ESP-NOW bridge is
+     count-agnostic and never needs reflashing for count changes.
 
 What it does NOT do (you do these in Max by hand after running):
   - Update the [jit.matrix dna ...] dim
@@ -29,7 +33,7 @@ import subprocess
 import glob
 
 
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 
 
 def bump_patch(version_str):
@@ -100,6 +104,15 @@ def main():
         (r'#define NUM_LEDS_B\s+\d+', f'#define NUM_LEDS_B   {b}'),
     ], version_re=r'#define VERSION "([\d.]+)"')
 
+    # Wireless ESP-NOW receiver mirrors the same per-strand counts.
+    # (The bridge is count-agnostic and is intentionally left untouched.)
+    rx = os.path.join(here, 'LED_strip_esp32_rx', 'LED_strip_esp32_rx.ino')
+    if os.path.exists(rx):
+        update_file(rx, [
+            (r'#define NUM_LEDS_A\s+\d+', f'#define NUM_LEDS_A   {a}'),
+            (r'#define NUM_LEDS_B\s+\d+', f'#define NUM_LEDS_B   {b}'),
+        ], version_re=r'#define VERSION "([\d.]+)"')
+
     # Max-side JS files now live alongside the Max project at
     # <repo>/Max/JacobzLAddr26-dna/code/  (this script is in <repo>/DNA/).
     code = os.path.normpath(os.path.join(here, '..', 'Max',
@@ -168,6 +181,10 @@ def main():
     print(f"  - Reopen [serial] (port {os.path.basename(port)}, baud 250000)")
     print(f"  - Recompile all [v8] boxes; you should see the new versions")
     print(f"    print in the Max console (e.g. 'dna_frame.js v1.0.1')")
+    print()
+    print("Wireless: if you run over ESP-NOW, reflash the RECEIVER with")
+    print("  \"Flash ESP32 wireless.command\" so its new LED counts take")
+    print("  effect (the bridge needs no reflash).")
     return 0
 
 

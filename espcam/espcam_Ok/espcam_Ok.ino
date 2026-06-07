@@ -36,8 +36,31 @@
 // ===========================
 // Access Point Configuration
 // ===========================
+#define VERSION "1.2.0"
 const char *ap_ssid = "ESP32-CAM-AP";
+
+// --- AprilTag-oriented tuning ------------------------------------------
+// The camera exists ONLY to read AprilTag fiducials, so it is tuned for
+// low bandwidth + low latency, not picture quality. AprilTags are
+// high-contrast black/white squares that detect fine at low resolution
+// and through moderate JPEG compression.
+//   TAG_FRAMESIZE     smaller = less airtime + faster detect + lower
+//                     latency. QVGA (320x240) is a good balance; drop to
+//                     FRAMESIZE_QQVGA (160x120) if tags fill enough of
+//                     the frame, or raise to FRAMESIZE_VGA only if you
+//                     need to read tags farther away.
+//   TAG_JPEG_QUALITY  higher number = more compression = smaller frames
+//                     (0..63). 12 keeps tag edges crisp while staying
+//                     light. Raise toward 18-20 for even less bandwidth.
+#define TAG_FRAMESIZE    FRAMESIZE_QVGA
+#define TAG_JPEG_QUALITY 12
 const char *ap_password = "12345678";
+// Pin the AP to channel 1. The DNA LED ESP-NOW link deliberately runs on
+// channel 11 (non-overlapping with ch1) so the two wireless subsystems
+// never contend for airtime. Keep these two facts in sync: camera = ch1,
+// LED link = ch11. If you ever move the camera off ch1, move the LED link
+// to a channel that does NOT overlap it.
+#define AP_CHANNEL 1
 
 void startCameraServer();
 void setupLedFlash(int pin);
@@ -46,6 +69,7 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
+  Serial.println("espcam_Ok v" VERSION);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -114,9 +138,14 @@ void setup() {
     s->set_brightness(s, 1);   // up the brightness just a bit
     s->set_saturation(s, -2);  // lower the saturation
   }
-  // drop down frame size for higher initial frame rate
+  // Low-res + efficient JPEG: all we need is to resolve AprilTags, and
+  // small frames mean less airtime and lower end-to-end latency (faster
+  // capture, encode, transmit, and detect -> immediate reaction to a
+  // card flip). grab_mode CAMERA_GRAB_LATEST (set above) already makes
+  // the camera serve the freshest frame and drop stale ones.
   if (config.pixel_format == PIXFORMAT_JPEG) {
-    s->set_framesize(s, FRAMESIZE_QVGA);
+    s->set_framesize(s, TAG_FRAMESIZE);
+    s->set_quality(s, TAG_JPEG_QUALITY);
   }
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
@@ -134,10 +163,14 @@ void setup() {
 #endif
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(ap_ssid, ap_password);
+  // Channel pinned to AP_CHANNEL (1) so it never drifts onto the LED
+  // link's channel (11). Args: ssid, password, channel, hidden(0), max_conn.
+  WiFi.softAP(ap_ssid, ap_password, AP_CHANNEL);
   Serial.println("Access Point started");
   Serial.print("AP SSID: ");
   Serial.println(ap_ssid);
+  Serial.print("AP channel: ");
+  Serial.println(AP_CHANNEL);
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
