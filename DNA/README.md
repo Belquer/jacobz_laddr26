@@ -144,6 +144,11 @@ under `DNA/`.
   - `r <0..2>`, `g <0..2>`, `b <0..2>` — per-channel white-balance gain
     (defaults `1.00 / 0.85 / 0.65` for warm-neutral whites on this
     blue-biased rope)
+  - **v1.2.0+:** `master`/`r`/`g`/`b` now **re-render the last frame
+    immediately**, so a gain change is visible even on paused video or a
+    static `setall` image (before this, gains only applied to the next
+    live video frame and `bang` replayed stale already-scaled bytes).
+    `bang` likewise re-renders the last frame with the current gains.
   - `scan <N>` — light only LED N red (raw 255,0,0; bypasses gains).
     Use with `[metro 500] → [counter] → [prepend scan]` to walk a dot
     down the rope and count LEDs from inside Max.

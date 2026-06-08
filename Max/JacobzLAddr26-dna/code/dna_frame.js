@@ -1,4 +1,4 @@
-// dna_frame.js v1.1.1 — for use with [js dna_frame.js] or [v8 dna_frame.js]
+// dna_frame.js v1.2.0 — for use with [js dna_frame.js] or [v8 dna_frame.js]
 //
 // Input forms on inlet 0:
 //
@@ -8,7 +8,7 @@
 //   list (PAYLOAD_LEN ints)
 //                       RGB bytes for NUM_LEDS pixels — frame and emit.
 //
-//   bang                re-emit the last frame.
+//   bang                re-render the last frame with the CURRENT gains.
 //
 //   scan <N>            light only LED N red (raw 255,0,0; ignores all
 //                       gains so it's clearly visible at any master).
@@ -27,6 +27,9 @@
 //   r <0..2>            red channel gain   (default 1.00)
 //   g <0..2>            green channel gain (default 0.85)
 //   b <0..2>            blue channel gain  (default 0.65)
+//   NOTE: master/r/g/b now RE-RENDER the last frame immediately, so they
+//   take visible effect even on a paused video or a static setall image —
+//   you no longer need live video flowing to see a gain change.
 //
 // Output (outlet 0): a list ready for [serial]:
 //   'F'(0x46), LEN_HI, LEN_LO, [PAYLOAD_LEN RGB bytes], CHK = sum & 0xFF
@@ -35,7 +38,7 @@ autowatch = 1;
 inlets = 1;
 outlets = 1;
 
-post("dna_frame.js v1.1.1\n");
+post("dna_frame.js v1.2.0\n");
 
 var NUM_LEDS    = 213;
 var PAYLOAD_LEN = NUM_LEDS * 3;   // 639
@@ -47,7 +50,16 @@ var gGain = 0.85;
 var bGain = 0.65;
 
 var lastFrame = null;
+// Closure that returns the UNSCALED [r,g,b] for LED i of the last frame
+// (from video matrix or list). Kept so master/r/g/b/bang can re-render
+// the same content with the current gains instead of replaying stale
+// already-scaled bytes.
+var lastGetRGB = null;
 var scratch = new JitterMatrix(3, "char", NUM_LEDS, 1);
+
+function render() {
+    if (lastGetRGB) emit(buildFrame(lastGetRGB));
+}
 
 // macOS USB-CDC TX buffer is small (~384 bytes). When the framed
 // payload exceeds that, Max [serial] truncates or drops the write
@@ -63,10 +75,10 @@ function chunk(n) {
     post("dna_frame.js: CHUNK_SIZE = " + CHUNK_SIZE + "\n");
 }
 
-function master(v) { masterGain = (v < 0) ? 0 : v; }
-function r(v) { rGain = (v < 0) ? 0 : v; }
-function g(v) { gGain = (v < 0) ? 0 : v; }
-function b(v) { bGain = (v < 0) ? 0 : v; }
+function master(v) { masterGain = (v < 0) ? 0 : v; render(); }
+function r(v) { rGain = (v < 0) ? 0 : v; render(); }
+function g(v) { gGain = (v < 0) ? 0 : v; render(); }
+function b(v) { bGain = (v < 0) ? 0 : v; render(); }
 
 function emit(out) {
     lastFrame = out;
@@ -147,17 +159,19 @@ function list() {
               " bytes, got " + args.length + "\n");
         return;
     }
-    emit(buildFrame(function (i) {
+    lastGetRGB = function (i) {
         var bi = i * 3;
         return [args[bi], args[bi + 1], args[bi + 2]];
-    }));
+    };
+    emit(buildFrame(lastGetRGB));
 }
 
 function jit_matrix(name) {
     scratch.frommatrix(name);
-    emit(buildFrame(function (i) {
+    lastGetRGB = function (i) {
         return scratch.getcell(i, 0);
-    }));
+    };
+    emit(buildFrame(lastGetRGB));
 }
 
 function scan(n) {
@@ -165,5 +179,9 @@ function scan(n) {
 }
 
 function bang() {
-    if (lastFrame) outlet(0, lastFrame);
+    // Re-render the last frame with the CURRENT gains (not the stale
+    // already-scaled bytes). Falls back to replaying lastFrame if the
+    // only thing ever emitted was a scan.
+    if (lastGetRGB) render();
+    else if (lastFrame) outlet(0, lastFrame);
 }
