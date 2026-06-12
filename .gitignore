@@ -4847,3 +4847,16 @@ Max/DNA_video.mov
 # Locally-cached video assets (large; regenerate with ffmpeg as needed)
 Jacobz Laddr Cards/Cards Videos ProRes/
 Max/JacobzLAddr26-dna/media/
+
+# Python venv (espcam) — recreate with python3 -m venv esp32-cam-env
+espcam/esp32-cam-env/
+
+# Arduino build output
+espcam/espcam_Ok/build/
+
+# Affinity Designer lock files
+*~lock~
+
+# Affinity sources over GitHub's 100MB limit (kept local; use Git LFS to track)
+Jacobz Laddr Cards/ARCANO cartas.af
+Jacobz Laddr Cards/AprilTag (dragged).af
